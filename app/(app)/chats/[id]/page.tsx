@@ -7,12 +7,13 @@ import { UserAvatar } from '@/components/user-avatar';
 import { Button, IconButton } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { IconSend, IconPaperclip } from '@/components/icons';
-import type { User, Message } from '@/types';
+import type { Profile } from '@/lib/supabase/types';
+import type { Message } from '@/lib/supabase/types';
 
 export default function ChatPage() {
   const params = useParams();
   const userId = params.id as string;
-  const [otherUser, setOtherUser] = useState<User | null>(null);
+  const [otherUser, setOtherUser] = useState<Profile | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -36,7 +37,7 @@ export default function ChatPage() {
       setCurrentUserId(user.id);
 
       const { data: userData } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
@@ -44,19 +45,12 @@ export default function ChatPage() {
       setOtherUser(userData);
 
       const { data: msgData } = await supabase
-        .from('direct_messages')
+        .from('messages')
         .select('*')
-        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${userId}),and(sender_id.eq.${userId},recipient_id.eq.${user.id})`)
+        .or(`and(sender_id.eq.${user.id},conversation_id.eq.${userId}),and(sender_id.eq.${userId},conversation_id.eq.${user.id})`)
         .order('created_at', { ascending: true });
 
       setMessages(msgData || []);
-
-      // Mark as read
-      await supabase
-        .from('direct_messages')
-        .update({ read_at: new Date().toISOString() })
-        .eq('recipient_id', user.id)
-        .eq('sender_id', userId);
     } catch (error) {
       console.error('Failed to load chat:', error);
     } finally {
@@ -73,11 +67,14 @@ export default function ChatPage() {
       if (!user) return;
 
       const { data: msg } = await supabase
-        .from('direct_messages')
+        .from('messages')
         .insert({
           sender_id: user.id,
-          recipient_id: userId,
-          content: newMessage,
+          conversation_id: userId,
+          body: newMessage,
+          reply_to: null,
+          edited: false,
+          deleted: false,
         })
         .select()
         .single();
@@ -103,7 +100,7 @@ export default function ChatPage() {
       <div className="flex items-center gap-3 p-4 border-b border-[var(--border)]">
         {otherUser && <UserAvatar user={otherUser} size={40} />}
         <div className="flex-1">
-          <div className="font-semibold">{otherUser?.display_name || otherUser?.full_name}</div>
+          <div className="font-semibold">{otherUser?.display_name || otherUser?.display_name}</div>
           <div className="text-xs text-[var(--text-2)]">@{otherUser?.username}</div>
         </div>
       </div>
@@ -126,9 +123,9 @@ export default function ChatPage() {
                       : 'bg-[var(--bg-2)] text-[var(--text)]'
                   }`}
                 >
-                  {msg.content && <p className="text-sm">{msg.content}</p>}
-                  {msg.media_url && (
-                    <img src={msg.media_url} alt="Message" className="max-w-xs rounded" />
+                  {msg.body && <p className="text-sm">{msg.body}</p>}
+                  {msg.attachment_url && (
+                    <img src={msg.attachment_url} alt="Message" className="max-w-xs rounded" />
                   )}
                 </div>
               </div>

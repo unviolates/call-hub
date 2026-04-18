@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { UserAvatar } from '@/components/user-avatar';
 import { Button } from '@/components/ui/button';
 import { IconMessageSquare, IconUserPlus, IconArrowLeft } from '@/components/icons';
-import type { User, Post } from '@/types';
+import type { User, Post } from '@/lib/supabase/types';
 
 interface UserWithStats extends User {
   postCount: number;
@@ -36,7 +36,7 @@ export default function UserProfilePage() {
       setCurrentUserId(authUser.id);
 
       const { data: userData } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
@@ -127,7 +127,7 @@ export default function UserProfilePage() {
             <IconArrowLeft size={16} />
           </Button>
         </Link>
-        <h1 className="text-lg font-bold">{user.full_name}</h1>
+        <h1 className="text-lg font-bold">{user.display_name}</h1>
       </div>
 
       {/* Cover Image */}
@@ -157,7 +157,7 @@ export default function UserProfilePage() {
         </div>
 
         <div className="mb-4">
-          <h1 className="text-2xl font-bold">{user.display_name || user.full_name}</h1>
+          <h1 className="text-2xl font-bold">{user.display_name || user.display_name}</h1>
           <div className="text-[var(--text-2)]">@{user.username}</div>
           {user.bio && <p className="text-sm mt-2">{user.bio}</p>}
         </div>
@@ -194,9 +194,9 @@ export default function UserProfilePage() {
                   href={`/posts/${post.id}`}
                   className="aspect-square rounded-lg overflow-hidden bg-[var(--bg-2)] hover:opacity-80 transition"
                 >
-                  {post.media_url && (
+                  {post.media_urls && (
                     <img
-                      src={post.media_url}
+                      src={post.media_urls?.[0]}
                       alt="Post"
                       className="w-full h-full object-cover"
                     />

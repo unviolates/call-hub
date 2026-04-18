@@ -46,7 +46,7 @@ export default function NewStoryPage() {
         .insert({
           user_id: user.id,
           caption,
-          media_url: data?.path,
+          media_urls: data?.path,
           media_type: mediaFile.type.startsWith('image') ? 'image' : 'video',
           expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         });

@@ -7,11 +7,11 @@ import { UserAvatar } from '@/components/user-avatar';
 import { IconSearch, IconMessageSquare, IconUserPlus } from '@/components/icons';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import type { User } from '@/types';
+import type { Profile } from '@/lib/supabase/types';
 
 export default function SearchPage() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState('');
   const [following, setFollowing] = useState(new Set<string>());
@@ -51,10 +51,10 @@ export default function SearchPage() {
     try {
       setLoading(true);
       const { data } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*')
         .or(
-          `full_name.ilike.%${searchTerm}%,username.ilike.%${searchTerm}%`
+          `display_name.ilike.%${searchTerm}%,username.ilike.%${searchTerm}%`
         )
         .neq('id', currentUserId)
         .limit(20);
@@ -122,7 +122,7 @@ export default function SearchPage() {
                 <div className="flex-1 min-w-0">
                   <Link href={`/profile/${user.id}`}>
                     <div className="font-semibold text-sm hover:underline">
-                      {user.display_name || user.full_name}
+                      {user.display_name || user.display_name}
                     </div>
                     <div className="text-xs text-[var(--text-2)]">@{user.username}</div>
                     {user.bio && <p className="text-xs text-[var(--text-2)] truncate mt-1">{user.bio}</p>}

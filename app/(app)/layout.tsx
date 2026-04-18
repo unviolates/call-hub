@@ -7,27 +7,27 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  let profile = await supabase
-    .from('users').select('*').eq('id', user.id).single();
+  let { data: profile, error } = await supabase
+    .from('profiles').select('*').eq('id', user.id).single();
 
-  if (profile.error || !profile.data) {
+  if (error || !profile) {
     // Create user profile if it doesn't exist
     const defaultProfile = {
       id: user.id,
-      email: user.email || '',
       username: user.email?.split('@')[0] || 'user',
-      full_name: user.user_metadata?.full_name || 'User',
-      display_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-      bio: null,
+      display_name: user.user_metadata?.display_name || user.email?.split('@')[0] || 'User',
+      bio: '',
       avatar_url: user.user_metadata?.avatar_url || null,
-      cover_image_url: null,
+      cover_url: null,
+      verified: false,
+      online: true,
+      last_seen: new Date().toISOString(),
       created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
     };
 
-    await supabase.from('users').insert(defaultProfile);
+    await supabase.from('profiles').insert(defaultProfile);
     return <AppShell profile={defaultProfile}>{children}</AppShell>;
   }
 
-  return <AppShell profile={profile.data}>{children}</AppShell>;
+  return <AppShell profile={profile}>{children}</AppShell>;
 }

@@ -6,10 +6,10 @@ import { createClient } from '@/lib/supabase/client';
 import { UserAvatar } from '@/components/user-avatar';
 import { IconSearch, IconPlus } from '@/components/icons';
 import { Input } from '@/components/ui/input';
-import type { User } from '@/types';
+import type { Profile } from '@/lib/supabase/types';
 
 interface Conversation {
-  user: User;
+  user: Profile;
   lastMessage: string | null;
   lastMessageTime: string;
   unread: boolean;
@@ -55,16 +55,16 @@ export default function ChatsPage() {
         const otherId = msg.sender_id === user.id ? msg.recipient_id : msg.sender_id;
         if (!uniqueUsers.has(otherId)) {
           const { data: userData } = await supabase
-            .from('users')
+            .from('profiles')
             .select('*')
             .eq('id', otherId)
             .single();
           if (userData) {
             uniqueUsers.set(otherId, {
               user: userData,
-              lastMessage: msg.content || (msg.media_url ? '📸 Media' : null),
+              lastMessage: msg.body || (msg.attachment_url ? '📸 Media' : null),
               lastMessageTime: msg.created_at,
-              unread: !msg.read_at && msg.recipient_id === user.id,
+              unread: !msg.body && msg.recipient_id === user.id,
             });
           }
         }
@@ -80,7 +80,7 @@ export default function ChatsPage() {
   }
 
   const filtered = conversations.filter(conv =>
-    conv.user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    conv.user.display_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     conv.user.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -117,7 +117,7 @@ export default function ChatsPage() {
               >
                 <UserAvatar user={conv.user} size={48} />
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-sm">{conv.user.display_name || conv.user.full_name}</div>
+                  <div className="font-semibold text-sm">{conv.user.display_name || conv.user.display_name}</div>
                   <div className="text-xs text-[var(--text-2)] truncate">
                     {conv.lastMessage || 'No messages'}
                   </div>

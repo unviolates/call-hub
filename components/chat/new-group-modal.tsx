@@ -26,7 +26,7 @@ export function NewGroupModal({ open, onClose }: { open: boolean; onClose: () =>
       let q = supabase.from('profiles').select('*').limit(30);
       if (query.trim()) q = q.or(`display_name.ilike.%${query}%,username.ilike.%${query}%`);
       const { data } = await q;
-      setUsers((data ?? []).filter((u: any) => u.id));
+      setUsers((data ?? []) as Profile[]);
     })();
   }, [open, query]);
 

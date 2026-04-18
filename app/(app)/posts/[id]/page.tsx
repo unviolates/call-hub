@@ -8,7 +8,7 @@ import { UserAvatar } from '@/components/user-avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { IconHeart, IconMessageCircle, IconArrowLeft } from '@/components/icons';
-import type { Post, User, Comment } from '@/types';
+import type { Post, User, Comment } from '@/lib/supabase/types';
 
 interface PostWithAuthor extends Post {
   author: User;
@@ -45,7 +45,7 @@ export default function PostPage() {
       if (!postData) return;
 
       const { data: author } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*')
         .eq('id', postData.user_id)
         .single();
@@ -73,7 +73,7 @@ export default function PostPage() {
         const enrichedComments = await Promise.all(
           commentsData.map(async (comment) => {
             const { data: commentAuthor } = await supabase
-              .from('users')
+              .from('profiles')
               .select('*')
               .eq('id', comment.user_id)
               .single();
@@ -156,16 +156,16 @@ export default function PostPage() {
           <Link href={`/profile/${post.author.id}`} className="flex gap-3 mb-4">
             <UserAvatar user={post.author} size={40} />
             <div>
-              <div className="font-semibold text-sm">{post.author.display_name || post.author.full_name}</div>
+              <div className="font-semibold text-sm">{post.author.display_name || post.author.display_name}</div>
               <div className="text-xs text-[var(--text-2)]">@{post.author.username}</div>
             </div>
           </Link>
 
           {post.caption && <p className="text-sm mb-3">{post.caption}</p>}
 
-          {post.media_url && (
+          {post.media_urls && post.media_urls.length > 0 && (
             <img
-              src={post.media_url}
+              src={post.media_urls[0]}
               alt="Post"
               className="w-full rounded-lg mb-3 max-h-96 object-cover"
             />
@@ -175,13 +175,13 @@ export default function PostPage() {
             <button
               onClick={toggleLike}
               className="flex items-center gap-2 hover:text-[var(--accent)] transition"
-            >
-              <IconHeart
-                size={16}
-                fill={post.liked ? 'currentColor' : 'none'}
-                color={post.liked ? 'var(--accent)' : 'currentColor'}
-              />
-              {post.likes_count}
+              >
+                <IconHeart
+                  size={16}
+                  fill={post.liked ? 'var(--accent)' : 'none'}
+                  color={post.liked ? 'var(--accent)' : 'currentColor'}
+                />
+                0
             </button>
             <div className="flex items-center gap-2">
               <IconMessageCircle size={16} />
@@ -196,10 +196,10 @@ export default function PostPage() {
               <UserAvatar user={comment.author} size={32} />
               <div className="flex-1 bg-[var(--bg-2)] p-3 rounded-lg">
                 <div className="flex items-center gap-2 mb-1">
-                  <div className="font-semibold text-sm">{comment.author.display_name || comment.author.full_name}</div>
+                  <div className="font-semibold text-sm">{comment.author.display_name || comment.author.display_name}</div>
                   <div className="text-xs text-[var(--text-2)]">@{comment.author.username}</div>
                 </div>
-                <p className="text-sm">{comment.content}</p>
+                <p className="text-sm">{comment.body}</p>
               </div>
             </div>
           ))}

@@ -67,10 +67,10 @@ export function AppShell({ profile, children }: { profile: Profile; children: Re
 
               <Link href="/profile"
               className="ch-hover flex items-center gap-3 mx-3 my-1 px-3 py-2.5 rounded-xl transition-colors">
-              <Avatar user={{...profile, display_name: profile.display_name || profile.full_name}} size={40} />
+              <Avatar user={profile} size={40} />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-semibold truncate">{profile.display_name || profile.full_name}</span>
+                  <span className="text-sm font-semibold truncate">{profile.display_name}</span>
                 </div>
                 <div className="text-[12.5px] text-[var(--text-2)] mt-0.5">@{profile.username}</div>
               </div>

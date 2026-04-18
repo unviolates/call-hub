@@ -1,18 +1,17 @@
 import { Avatar } from '@/components/ui/avatar';
-import type { User } from '@/types';
+import type { Profile } from '@/lib/supabase/types';
 
 type Props = {
-  user: User;
+  user: Profile;
   size?: number;
   ring?: boolean;
   dot?: boolean;
 };
 
 export function UserAvatar({ user, size, ring, dot }: Props) {
-  const displayName = user.display_name || user.full_name || 'User';
   return (
     <Avatar
-      user={{ ...user, display_name: displayName }}
+      user={user}
       size={size}
       ring={ring}
       dot={dot}

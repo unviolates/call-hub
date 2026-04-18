@@ -49,7 +49,7 @@ export default function NewPostPage() {
         .insert({
           user_id: user.id,
           caption,
-          media_url: mediaUrl,
+          media_urls: mediaUrl,
           media_type: mediaFile?.type.startsWith('image') ? 'image' : 'video',
         });
 

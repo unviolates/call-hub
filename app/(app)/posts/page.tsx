@@ -6,7 +6,7 @@ import { UserAvatar } from '@/components/user-avatar';
 import { Button } from '@/components/ui/button';
 import { IconHeart, IconMessageCircle, IconShare, IconPlus } from '@/components/icons';
 import Link from 'next/link';
-import type { Post, User } from '@/types';
+import type { Post, User } from '@/lib/supabase/types';
 
 interface PostWithAuthor extends Post {
   author: User;
@@ -50,7 +50,7 @@ export default function PostsPage() {
       const enriched = await Promise.all(
         postsData.map(async (post) => {
           const { data: author } = await supabase
-            .from('users')
+            .from('profiles')
             .select('*')
             .eq('id', post.user_id)
             .single();
@@ -129,16 +129,16 @@ export default function PostsPage() {
               <Link href={`/posts/${post.id}`} className="flex gap-3 mb-3">
                 <UserAvatar user={post.author} size={40} />
                 <div>
-                  <div className="font-semibold text-sm">{post.author.display_name || post.author.full_name}</div>
+                  <div className="font-semibold text-sm">{post.author.display_name || post.author.display_name}</div>
                   <div className="text-xs text-[var(--text-2)]">@{post.author.username}</div>
                 </div>
               </Link>
 
               {post.caption && <p className="text-sm mb-3">{post.caption}</p>}
 
-              {post.media_url && (
+              {post.media_urls && (
                 <img
-                  src={post.media_url}
+                  src={post.media_urls?.[0]}
                   alt="Post media"
                   className="w-full rounded-lg mb-3 max-h-96 object-cover"
                 />
@@ -154,7 +154,7 @@ export default function PostsPage() {
                     fill={post.liked ? 'currentColor' : 'none'}
                     color={post.liked ? 'var(--accent)' : 'currentColor'}
                   />
-                  {post.likes_count}
+                  0
                 </button>
                 <button className="flex items-center gap-2 hover:text-[var(--accent)] transition">
                   <IconMessageCircle size={16} />

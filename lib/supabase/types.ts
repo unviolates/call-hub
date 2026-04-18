@@ -151,18 +151,7 @@ export type Database = {
   };
 };
 
-export type Profile = {
-  id: string;
-  email: string;
-  username: string;
-  full_name: string | null;
-  display_name: string | null;
-  bio: string | null;
-  avatar_url: string | null;
-  cover_image_url: string | null;
-  created_at: string;
-  updated_at: string;
-};
+export type Profile = Database['public']['Tables']['profiles']['Row'];
 
 export type Message = Database['public']['Tables']['messages']['Row'];
 export type Note = Database['public']['Tables']['notes']['Row'];
@@ -171,3 +160,13 @@ export type Post = Database['public']['Tables']['posts']['Row'];
 export type Conversation = Database['public']['Tables']['conversations']['Row'];
 export type Comment = Database['public']['Tables']['comments']['Row'];
 export type Notification = Database['public']['Tables']['notifications']['Row'];
+
+// Additional types for app features
+export type ChatGroup = Database['public']['Tables']['conversations']['Row'];
+export type DirectMessage = Database['public']['Tables']['messages']['Row'];
+export type User = Profile;
+export type PostLike = Database['public']['Tables']['post_likes']['Row'];
+export type Follow = Database['public']['Tables']['follows']['Row'];
+export type NoteReaction = Database['public']['Tables']['note_reactions']['Row'];
+export type NoteReply = Database['public']['Tables']['note_replies']['Row'];
+export type StoryView = Database['public']['Tables']['story_views']['Row'];

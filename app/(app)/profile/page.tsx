@@ -7,7 +7,7 @@ import { UserAvatar } from '@/components/user-avatar';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { IconLogout, IconMapPin } from '@/components/icons';
-import type { User } from '@/types';
+import type { User } from '@/lib/supabase/types';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -40,14 +40,14 @@ export default function ProfilePage() {
       setCurrentUserId(authUser.id);
 
       const { data: userData } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*')
         .eq('id', authUser.id)
         .single();
 
       if (userData) {
         setUser(userData);
-        setFullName(userData.full_name || '');
+        setFullName(userData.display_name || '');
         setBio(userData.bio || '');
         setUsername(userData.username);
 
@@ -83,7 +83,7 @@ export default function ProfilePage() {
     try {
       setSaving(true);
       await supabase
-        .from('users')
+        .from('profiles')
         .update({
           full_name: fullName,
           bio: bio,
@@ -166,7 +166,7 @@ export default function ProfilePage() {
         ) : (
           <>
             <div className="mb-4">
-              <h1 className="text-2xl font-bold">{user.display_name || user.full_name}</h1>
+              <h1 className="text-2xl font-bold">{user.display_name || user.display_name}</h1>
               <div className="text-[var(--text-2)]">@{user.username}</div>
               {user.bio && <p className="text-sm mt-2">{user.bio}</p>}
             </div>

@@ -36,7 +36,7 @@ export function StoryUploader({ onClose }: { onClose: () => void }) {
 
     const { error: insErr } = await supabase.from('stories').insert({
       user_id: me.id,
-      media_url: pub.publicUrl,
+      media_urls: pub.publicUrl,
       media_type: file.type.startsWith('video/') ? 'video' : 'image',
       caption: caption || null,
     });

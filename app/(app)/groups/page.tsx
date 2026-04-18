@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Avatar } from '@/components/ui/avatar';
 import { IconPlus } from '@/components/icons';
 import { Button } from '@/components/ui/button';
-import type { ChatGroup } from '@/types';
+import type { ChatGroup } from '@/lib/supabase/types';
 
 export default function GroupsPage() {
   const [groups, setGroups] = useState<ChatGroup[]>([]);
@@ -82,23 +82,18 @@ export default function GroupsPage() {
                 {group.avatar_url ? (
                   <img
                     src={group.avatar_url}
-                    alt={group.name}
+                    alt={group.name || 'Group'}
                     className="w-12 h-12 rounded-full object-cover"
                   />
                 ) : (
                   <div className="w-12 h-12 rounded-full bg-[var(--accent)]/10 flex items-center justify-center">
                     <span className="text-sm font-bold">
-                      {group.name.charAt(0).toUpperCase()}
+                      {(group.name || 'G').charAt(0).toUpperCase()}
                     </span>
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold">{group.name}</div>
-                  {group.description && (
-                    <div className="text-sm text-[var(--text-2)] truncate">
-                      {group.description}
-                    </div>
-                  )}
                 </div>
               </Link>
             ))}

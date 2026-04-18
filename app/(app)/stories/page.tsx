@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { UserAvatar } from '@/components/user-avatar';
 import { IconPlus } from '@/components/icons';
-import type { Story, User } from '@/types';
+import type { Story, User } from '@/lib/supabase/types';
 
 interface StoryWithAuthor extends Story {
   author: User;
@@ -42,7 +42,7 @@ export default function StoriesPage() {
       const enriched = await Promise.all(
         storiesData.map(async (story) => {
           const { data: author } = await supabase
-            .from('users')
+            .from('profiles')
             .select('*')
             .eq('id', story.user_id)
             .single();
@@ -83,7 +83,7 @@ export default function StoriesPage() {
                 className="relative group cursor-pointer rounded-lg overflow-hidden aspect-[9/16]"
               >
                 <img
-                  src={story.media_url}
+                  src={story.media_url?.[0]}
                   alt="Story"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                 />
@@ -92,7 +92,7 @@ export default function StoriesPage() {
                   <div className="flex items-center gap-2">
                     <UserAvatar user={story.author} size={28} />
                     <div className="text-xs font-semibold truncate">
-                      {story.author.display_name || story.author.full_name}
+                      {story.author.display_name || story.author.display_name}
                     </div>
                   </div>
                 </div>
