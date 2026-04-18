@@ -151,7 +151,19 @@ export type Database = {
   };
 };
 
-export type Profile = Database['public']['Tables']['profiles']['Row'];
+export type Profile = {
+  id: string;
+  email: string;
+  username: string;
+  full_name: string | null;
+  display_name: string | null;
+  bio: string | null;
+  avatar_url: string | null;
+  cover_image_url: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Message = Database['public']['Tables']['messages']['Row'];
 export type Note = Database['public']['Tables']['notes']['Row'];
 export type Story = Database['public']['Tables']['stories']['Row'];
