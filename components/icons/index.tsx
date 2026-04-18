@@ -1,7 +1,7 @@
 import type { SVGProps } from 'react';
 
 type IProps = SVGProps<SVGSVGElement> & { size?: number; stroke?: number };
-const I = ({ size = 20, stroke = 1.75, children, ...rest }: IProps & { children: React.ReactNode }) => (
+const I = ({ size = 20, stroke = 1.75, children, ...rest }: any) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={stroke}
     strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }} {...rest}>{children}</svg>
 );
@@ -54,6 +54,9 @@ export const VerifyBadge = ({ size = 14 }: { size?: number }) => (
     <path d="M7.5 12.25 10.5 15.25 16.5 9.25" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
+
+export const IconUserPlus = (p: IProps) => <I {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="13" x2="19" y2="19"/><line x1="16" y1="16" x2="22" y2="16"/></I>;
+export const IconMapPin = (p: IProps) => <I {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></I>;
 
 export const Logomark = ({ size = 24 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden style={{ flexShrink: 0 }}>
