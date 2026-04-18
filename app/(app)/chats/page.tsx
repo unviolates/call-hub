@@ -1,77 +1,133 @@
-import { createClient } from '@/lib/supabase/server';
-import { ChatList } from '@/components/chat/chat-list';
-import { EmptyConversation } from '@/components/chat/empty-conversation';
+'use client';
 
-export const dynamic = 'force-dynamic';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { createClient } from '@/lib/supabase/client';
+import { UserAvatar } from '@/components/user-avatar';
+import { IconSearch, IconPlus } from '@/components/icons';
+import { Input } from '@/components/ui/input';
+import type { Profile } from '@/lib/supabase/types';
 
-export default async function ChatsPage() {
-  const supabase = createClient();
-  const chats = await fetchChats(supabase);
-
-  return (
-    <>
-      <ChatList chats={chats} activeId={null} />
-      <div className="hidden lg:flex flex-1"><EmptyConversation /></div>
-    </>
-  );
+interface Conversation {
+  user: Profile;
+  lastMessage: string | null;
+  lastMessageTime: string;
+  unread: boolean;
 }
 
-async function fetchChats(supabase: ReturnType<typeof createClient>) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return [];
+export default function ChatsPage() {
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const supabase = createClient();
 
-  const { data: memberships } = await supabase
-    .from('conversation_members')
-    .select('conversation_id, pinned, last_read_at, conversations(*)')
-    .eq('user_id', user.id);
-
-  if (!memberships) return [];
-
-  const conversationIds = memberships.map((m) => m.conversation_id);
-  if (!conversationIds.length) return [];
-
-  const { data: allMembers } = await supabase
-    .from('conversation_members')
-    .select('conversation_id, user_id, profiles(id, username, display_name, avatar_url, verified, online)')
-    .in('conversation_id', conversationIds);
-
-  const { data: latestMessages } = await supabase
-    .from('messages')
-    .select('*')
-    .in('conversation_id', conversationIds)
-    .order('created_at', { ascending: false })
-    .limit(200);
-
-  return memberships.map((m: any) => {
-    const conv = m.conversations;
-    const members = (allMembers || []).filter((x: any) => x.conversation_id === m.conversation_id);
-    const other = conv?.is_group ? null : members.find((x: any) => x.user_id !== user.id);
-    const lastMsg = (latestMessages || []).find((x: any) => x.conversation_id === m.conversation_id);
-    const unread = (latestMessages || []).filter((x: any) =>
-      x.conversation_id === m.conversation_id &&
-      x.sender_id !== user.id &&
-      new Date(x.created_at) > new Date(m.last_read_at)
-    ).length;
-
-    return {
-      id: conv.id,
-      isGroup: conv.is_group,
-      name: conv.is_group ? conv.name : (other as any)?.profiles?.display_name ?? 'Unknown',
-      username: conv.is_group ? null : (other as any)?.profiles?.username ?? null,
-      avatarUrl: conv.is_group ? conv.avatar_url : (other as any)?.profiles?.avatar_url ?? null,
-      online: !conv.is_group && ((other as any)?.profiles?.online ?? false),
-      verified: conv.is_group ? true : ((other as any)?.profiles?.verified ?? false),
-      otherUserId: !conv.is_group ? (other as any)?.user_id : null,
-      pinned: m.pinned,
-      lastMessageAt: conv.last_message_at,
-      lastMessage: lastMsg?.body ?? '',
-      lastMessageFromMe: lastMsg?.sender_id === user.id,
-      unread,
-      membersCount: members.length,
+  useEffect(() => {
+    loadConversations();
+    const channel = supabase
+      .channel('direct_messages')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'direct_messages' }, () => {
+        loadConversations();
+      })
+      .subscribe();
+    return () => {
+      void channel.unsubscribe();
     };
-  }).sort((a: any, b: any) => {
-    if (a.pinned && !b.pinned) return -1;
-    if (!a.pinned && b.pinned) return 1;
-    return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime();
-  });
+  }, []);
+
+  async function loadConversations() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: messages } = await supabase
+        .from('direct_messages')
+        .select('*')
+        .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+        .order('created_at', { ascending: false });
+
+      if (!messages) {
+        setConversations([]);
+        return;
+      }
+
+      const uniqueUsers = new Map<string, Conversation>();
+      for (const msg of messages) {
+        const otherId = msg.sender_id === user.id ? msg.recipient_id : msg.sender_id;
+        if (!uniqueUsers.has(otherId)) {
+          const { data: userData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', otherId)
+            .single();
+          if (userData) {
+            uniqueUsers.set(otherId, {
+              user: userData,
+              lastMessage: msg.body || (msg.attachment_url ? '📸 Media' : null),
+              lastMessageTime: msg.created_at,
+              unread: !msg.body && msg.recipient_id === user.id,
+            });
+          }
+        }
+      }
+      setConversations(Array.from(uniqueUsers.values()).sort((a, b) =>
+        new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime()
+      ));
+    } catch (error) {
+      console.error('Failed to load conversations:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const filtered = conversations.filter(conv =>
+    conv.user.display_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    conv.user.username.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="flex flex-col h-full gap-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Messages</h1>
+        <Link href="/search" className="p-2 hover:bg-[var(--bg-2)] rounded-lg transition">
+          <IconPlus size={20} />
+        </Link>
+      </div>
+
+      <Input
+        leftIcon={<IconSearch size={16} />}
+        placeholder="Search conversations..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+      />
+
+      <div className="flex-1 overflow-y-auto">
+        {loading ? (
+          <div className="flex items-center justify-center h-32 text-[var(--text-2)]">Loading...</div>
+        ) : filtered.length === 0 ? (
+          <div className="flex items-center justify-center h-32 text-[var(--text-2)]">
+            {conversations.length === 0 ? 'No conversations yet' : 'No results found'}
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {filtered.map((conv) => (
+              <Link
+                key={conv.user.id}
+                href={`/chats/${conv.user.id}`}
+                className="flex items-center gap-3 p-3 rounded-lg hover:bg-[var(--bg-2)] transition-colors"
+              >
+                <UserAvatar user={conv.user} size={48} />
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-sm">{conv.user.display_name || conv.user.display_name}</div>
+                  <div className="text-xs text-[var(--text-2)] truncate">
+                    {conv.lastMessage || 'No messages'}
+                  </div>
+                </div>
+                {conv.unread && <div className="w-2 h-2 bg-[var(--accent)] rounded-full" />}
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }

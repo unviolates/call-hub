@@ -1,101 +1,157 @@
-import { createClient } from '@/lib/supabase/server';
-import { ChatList } from '@/components/chat/chat-list';
-import { Conversation } from '@/components/chat/conversation';
-import { notFound } from 'next/navigation';
+'use client';
 
-export const dynamic = 'force-dynamic';
+import { useEffect, useState, useRef } from 'react';
+import { useParams } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import { UserAvatar } from '@/components/user-avatar';
+import { Button, IconButton } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { IconSend, IconPaperclip } from '@/components/icons';
+import type { Profile } from '@/lib/supabase/types';
+import type { Message } from '@/lib/supabase/types';
 
-export default async function ChatPage({ params }: { params: { id: string } }) {
+export default function ChatPage() {
+  const params = useParams();
+  const userId = params.id as string;
+  const [otherUser, setOtherUser] = useState<Profile | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return notFound();
 
-  const { data: conv } = await supabase
-    .from('conversations').select('*').eq('id', params.id).single();
-  if (!conv) return notFound();
+  useEffect(() => {
+    loadChat();
+  }, [userId]);
 
-  const { data: members } = await supabase
-    .from('conversation_members')
-    .select('user_id, profiles(id, username, display_name, avatar_url, verified, online, last_seen)')
-    .eq('conversation_id', params.id);
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
-  const other: any = conv.is_group ? null : (members || []).find((m: any) => m.user_id !== user.id)?.profiles;
+  async function loadChat() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      setCurrentUserId(user.id);
 
-  const { data: initialMessages } = await supabase
-    .from('messages')
-    .select('*')
-    .eq('conversation_id', params.id)
-    .order('created_at', { ascending: true })
-    .limit(200);
+      const { data: userData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-  const chats = await fetchChats(supabase);
+      setOtherUser(userData);
 
-  await supabase
-    .from('conversation_members')
-    .update({ last_read_at: new Date().toISOString() })
-    .eq('conversation_id', params.id).eq('user_id', user.id);
+      const { data: msgData } = await supabase
+        .from('messages')
+        .select('*')
+        .or(`and(sender_id.eq.${user.id},conversation_id.eq.${userId}),and(sender_id.eq.${userId},conversation_id.eq.${user.id})`)
+        .order('created_at', { ascending: true });
+
+      setMessages(msgData || []);
+    } catch (error) {
+      console.error('Failed to load chat:', error);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function sendMessage() {
+    if (!newMessage.trim()) return;
+
+    try {
+      setSending(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: msg } = await supabase
+        .from('messages')
+        .insert({
+          sender_id: user.id,
+          conversation_id: userId,
+          body: newMessage,
+          reply_to: null,
+          edited: false,
+          deleted: false,
+        })
+        .select()
+        .single();
+
+      if (msg) {
+        setMessages(prev => [...prev, msg]);
+        setNewMessage('');
+      }
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-full">Loading...</div>;
+  }
 
   return (
-    <>
-      <div className="hidden lg:block"><ChatList chats={chats} activeId={params.id} /></div>
-      <Conversation
-        conversationId={params.id}
-        isGroup={conv.is_group}
-        name={conv.is_group ? (conv.name ?? 'Group') : (other?.display_name ?? 'Unknown')}
-        username={conv.is_group ? null : (other?.username ?? null)}
-        avatarUrl={conv.is_group ? conv.avatar_url : (other?.avatar_url ?? null)}
-        online={!conv.is_group && (other?.online ?? false)}
-        verified={conv.is_group ? true : (other?.verified ?? false)}
-        membersCount={(members || []).length}
-        meId={user.id}
-        initialMessages={initialMessages ?? []}
-      />
-    </>
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex items-center gap-3 p-4 border-b border-[var(--border)]">
+        {otherUser && <UserAvatar user={otherUser} size={40} />}
+        <div className="flex-1">
+          <div className="font-semibold">{otherUser?.display_name || otherUser?.display_name}</div>
+          <div className="text-xs text-[var(--text-2)]">@{otherUser?.username}</div>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-[var(--text-2)]">
+            No messages yet. Start a conversation!
+          </div>
+        ) : (
+          messages.map((msg) => {
+            const isOwn = msg.sender_id === currentUserId;
+            return (
+              <div key={msg.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                <div
+                  className={`max-w-xs px-4 py-2 rounded-lg ${
+                    isOwn
+                      ? 'bg-[var(--accent)] text-white'
+                      : 'bg-[var(--bg-2)] text-[var(--text)]'
+                  }`}
+                >
+                  {msg.body && <p className="text-sm">{msg.body}</p>}
+                  {msg.attachment_url && (
+                    <img src={msg.attachment_url} alt="Message" className="max-w-xs rounded" />
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input */}
+      <div className="p-4 border-t border-[var(--border)] flex gap-2">
+        <Input
+          placeholder="Type a message..."
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+          leftIcon={<IconPaperclip size={16} />}
+        />
+        <Button
+          onClick={sendMessage}
+          disabled={!newMessage.trim() || sending}
+          className="px-4"
+        >
+          <IconSend size={16} />
+        </Button>
+      </div>
+    </div>
   );
-}
-
-async function fetchChats(supabase: ReturnType<typeof createClient>) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return [];
-  const { data: memberships } = await supabase
-    .from('conversation_members')
-    .select('conversation_id, pinned, last_read_at, conversations(*)')
-    .eq('user_id', user.id);
-  if (!memberships) return [];
-  const conversationIds = memberships.map((m: any) => m.conversation_id);
-  if (!conversationIds.length) return [];
-  const { data: allMembers } = await supabase
-    .from('conversation_members')
-    .select('conversation_id, user_id, profiles(id, username, display_name, avatar_url, verified, online)')
-    .in('conversation_id', conversationIds);
-  const { data: latestMessages } = await supabase
-    .from('messages').select('*').in('conversation_id', conversationIds)
-    .order('created_at', { ascending: false }).limit(200);
-
-  return memberships.map((m: any) => {
-    const conv = m.conversations;
-    const members = (allMembers || []).filter((x: any) => x.conversation_id === m.conversation_id);
-    const other = conv?.is_group ? null : members.find((x: any) => x.user_id !== user.id);
-    const lastMsg = (latestMessages || []).find((x: any) => x.conversation_id === m.conversation_id);
-    const unread = (latestMessages || []).filter((x: any) =>
-      x.conversation_id === m.conversation_id && x.sender_id !== user.id &&
-      new Date(x.created_at) > new Date(m.last_read_at)).length;
-    return {
-      id: conv.id, isGroup: conv.is_group,
-      name: conv.is_group ? conv.name : (other as any)?.profiles?.display_name ?? 'Unknown',
-      username: conv.is_group ? null : (other as any)?.profiles?.username ?? null,
-      avatarUrl: conv.is_group ? conv.avatar_url : (other as any)?.profiles?.avatar_url ?? null,
-      online: !conv.is_group && ((other as any)?.profiles?.online ?? false),
-      verified: conv.is_group ? true : ((other as any)?.profiles?.verified ?? false),
-      otherUserId: !conv.is_group ? (other as any)?.user_id : null,
-      pinned: m.pinned, lastMessageAt: conv.last_message_at,
-      lastMessage: lastMsg?.body ?? '',
-      lastMessageFromMe: lastMsg?.sender_id === user.id, unread,
-      membersCount: members.length,
-    };
-  }).sort((a: any, b: any) => {
-    if (a.pinned && !b.pinned) return -1;
-    if (!a.pinned && b.pinned) return 1;
-    return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime();
-  });
 }

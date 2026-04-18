@@ -46,7 +46,7 @@ export function PostComposer({ onClose }: { onClose: () => void }) {
 
     const { error } = await supabase.from('posts').insert({
       user_id: me.id, caption: caption || null,
-      media_urls: urls,
+      media_urlss: urls,
       media_type: files[0]?.type.startsWith('video/') ? 'video' : 'image',
       location: location || null,
     });
